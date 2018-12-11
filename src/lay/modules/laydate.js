@@ -1,6 +1,6 @@
 /**
  
- @Name : layDate 5.0.7 日期时间控件
+ @Name : layDate 5.0.9 日期时间控件
  @Author: 贤心
  @Site：http://www.layui.com/laydate/
  @License：MIT
@@ -12,8 +12,18 @@
 
   var isLayui = window.layui && layui.define, ready = {
     getPath: function(){
-      var js = document.scripts, script = js[js.length - 1], jsPath = script.src;
-      if(script.getAttribute('merge')) return;
+      var jsPath = document.currentScript ? document.currentScript.src : function(){
+        var js = document.scripts
+        ,last = js.length - 1
+        ,src;
+        for(var i = last; i > 0; i--){
+          if(js[i].readyState === 'interactive'){
+            src = js[i].src;
+            break;
+          }
+        }
+        return src || js[last].src;
+      }();
       return jsPath.substring(0, jsPath.lastIndexOf('/') + 1);
     }()
     
@@ -55,7 +65,7 @@
   }
 
   ,laydate = {
-    v: '5.0.7'
+    v: '5.0.9'
     ,config: {} //全局配置项
     ,index: (window.laydate && window.laydate.v) ? 100000 : 0
     ,path: ready.getPath
@@ -63,7 +73,7 @@
     //设置全局项
     ,set: function(options){
       var that = this;
-      that.config = ready.extend({}, that.config, options);
+      that.config = lay.extend({}, that.config, options);
       return that;
     }
     
@@ -311,7 +321,7 @@
   //设置值
   LAY.prototype.val = function(value){
     return this.each(function(index, item){
-      item.value = value;
+        item.value = value;
     });
   };
   
@@ -367,6 +377,7 @@
     ,range: false //是否开启范围选择，即双控件
     ,format: 'yyyy-MM-dd' //默认日期格式
     ,value: null //默认日期，支持传入new Date()，或者符合format参数设定的日期格式字符
+    ,isInitValue: true //用于控制是否自动向元素填充初始值（需配合 value 参数使用）
     ,min: '1900-1-1' //有效最小日期，年月日必须用“-”分割，时分秒必须用“:”分割。注意：它并不是遵循 format 设定的格式。
     ,max: '2099-12-31' //有效最大日期，同上
     ,trigger: 'focus' //呼出控件的事件
@@ -538,7 +549,7 @@
     isStatic || that.events();
     
     //默认赋值
-    if(options.value){
+    if(options.value && options.isInitValue){
       if(options.value.constructor === Date){
         that.setValue(that.parse(0, that.systemDate(options.value))); 
       } else {
@@ -705,7 +716,7 @@
     }
     
     //移除上一个控件
-    that.remove(Class.thisElem); 
+    that.remove(Class.thisElemDate); 
     
     //如果是静态定位，则插入到指定的容器中，否则，插入到body
     isStatic ? options.elem.append(elem) : (
@@ -716,8 +727,8 @@
     that.checkDate().calendar(); //初始校验
     that.changeEvent(); //日期切换
     
-    Class.thisElem = that.elemID;
-    
+    Class.thisElemDate = that.elemID;
+
     typeof options.ready === 'function' && options.ready(lay.extend({}, options.dateTime, {
       month: options.dateTime.month + 1
     }));
@@ -728,7 +739,7 @@
     var that = this
     ,options = that.config
     ,elem = lay('#'+ (prev || that.elemID));
-    if(elem[0] && !elem.hasClass(ELEM_STATIC)){
+    if(!elem.hasClass(ELEM_STATIC)){
       that.checkDate(function(){
         elem.remove();
       });
@@ -781,6 +792,8 @@
     ,div = lay.elem('div', {
       'class': ELEM_HINT
     });
+    
+    if(!that.elem) return;
     
     div.innerHTML = content || '';
     lay(that.elem).find('.'+ ELEM_HINT).remove();
@@ -1006,8 +1019,8 @@
     //计算当前月第一天的星期
     thisDate.setFullYear(dateTime.year, dateTime.month, 1);
     startWeek = thisDate.getDay();
-
-    prevMaxDate = laydate.getEndDate(dateTime.month, dateTime.year); //计算上个月的最后一天
+    
+    prevMaxDate = laydate.getEndDate(dateTime.month || 12, dateTime.year); //计算上个月的最后一天
     thisMaxDate = laydate.getEndDate(dateTime.month + 1, dateTime.year); //计算当前月的最后一天
     
     //赋值日
@@ -1379,6 +1392,7 @@
   
   //创建指定日期时间对象
   Class.prototype.newDate = function(dateTime){
+    dateTime = dateTime || {};
     return new Date(
       dateTime.year || 1
       ,dateTime.month || 0
